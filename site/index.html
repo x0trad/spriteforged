@@ -132,6 +132,8 @@ pre b{color:var(--accent)}
 .access .box{min-width:260px;flex:1}
 .reveal{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:10px 12px}
 .reveal span{font-family:'IBM Plex Mono';font-size:13.5px;flex:1;word-break:break-all}
+.reveal a{color:var(--text);text-decoration:underline;text-underline-offset:3px}
+.reveal a:hover{color:var(--accent)}
 .reveal button{background:none;border:none;color:var(--accent);font:600 12px/1 'IBM Plex Mono';cursor:pointer;white-space:nowrap}
 .note{font-size:12px;color:var(--faint);margin-top:10px}
 
@@ -277,7 +279,7 @@ footer{padding-block:36px;border-top:1px solid var(--line);display:flex;justify-
     </div>
     <div class="box">
       <div class="reveal"><span id="contactText">tap to reveal contact</span><button id="revealBtn" type="button">show</button></div>
-      <div class="note">Links inside this page may not open reliably in every viewer — the address above is shown as plain text so you can copy it.</div>
+      <div class="note">Click the address to email, or copy it into your mail app.</div>
     </div>
   </div>
 </section>
@@ -327,7 +329,9 @@ footer{padding-block:36px;border-top:1px solid var(--line);display:flex;justify-
 
   // ---- contact reveal (no fake form submission) ----
   document.getElementById("revealBtn").addEventListener("click", function(){
-    document.getElementById("contactText").textContent = "iamolder90@gmail.com";
+    var t = document.getElementById("contactText"), a = document.createElement("a");
+    a.href = "mailto:hello@aisia.asia"; a.textContent = "hello@aisia.asia";
+    t.textContent = ""; t.appendChild(a);
     this.hidden = true;
   });
 })();

@@ -1,0 +1,331 @@
+<title>Sprite Forge</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: a single scrolling column; hero runs a live client-side trait-recombination
+   demo in canvas (the actual mechanic the product sells), then a numbered pipeline,
+   a spec-sheet-style feature grid styled like a sprite contact sheet, an export sample,
+   and tiered pricing framed as "credits" to match the generation-based product */
+:root{
+  --bg:#121419; --panel:#1a1d25; --panel2:#20242e; --line:#2a2f3b; --line2:#3a4050;
+  --text:#e8eaf0; --muted:#9aa0b3; --faint:#5b6173;
+  --accent:#f5a623; --accent-ink:#1a1200; --accent-dim:#8a5f1c;
+  --ok:#6cd08a; --link:#ffd27a;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f6f4ef; --panel:#ffffff; --panel2:#efece3; --line:#ddd8c9; --line2:#c9c3ae;
+    --text:#1c1a14; --muted:#5c5848; --faint:#8d876e;
+    --accent:#b4720a; --accent-ink:#fff6e6; --accent-dim:#e3b063;
+    --ok:#2f8a52; --link:#8a5a0a;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f6f4ef; --panel:#ffffff; --panel2:#efece3; --line:#ddd8c9; --line2:#c9c3ae;
+  --text:#1c1a14; --muted:#5c5848; --faint:#8d876e;
+  --accent:#b4720a; --accent-ink:#fff6e6; --accent-dim:#e3b063;
+  --ok:#2f8a52; --link:#8a5a0a;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 'IBM Plex Sans',system-ui,sans-serif;padding-inline:0}
+::selection{background:var(--accent);color:var(--accent-ink)}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:20px}
+h1,h2,h3{font-family:'Silkscreen','IBM Plex Mono',monospace;line-height:1.25;text-wrap:balance;letter-spacing:.01em;margin:0}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+a{color:var(--link)}
+.btn{display:inline-flex;align-items:center;gap:8px;font:600 15px/1 'IBM Plex Sans',sans-serif;padding:13px 22px;border-radius:5px;border:1px solid transparent;cursor:pointer;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-primary:hover{filter:brightness(1.07)}
+.btn-ghost{background:transparent;border-color:var(--line2);color:var(--text)}
+.btn-ghost:hover{background:var(--panel2)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- nav ---- */
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb, var(--bg) 88%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .row{display:flex;align-items:center;gap:10px;padding-block:14px}
+nav .mark{font-family:'Silkscreen';font-size:15px;letter-spacing:.02em}
+nav .mark span{color:var(--accent)}
+nav .row .spacer{flex:1}
+nav .links{display:flex;gap:22px;font-size:14px;color:var(--muted)}
+nav .links a{color:inherit;text-decoration:none}
+nav .links a:hover{color:var(--text)}
+@media (max-width:640px){nav .links{display:none}}
+
+/* ---- hero ---- */
+.hero{padding-block:64px 52px;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+@media (max-width:860px){.hero{grid-template-columns:1fr;padding-block:40px}}
+.hero h1{font-size:clamp(28px,4.2vw,44px)}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p.lead{color:var(--muted);font-size:18px;max-width:46ch;margin-top:18px}
+.hero .cta{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.hero .proof{margin-top:22px;font-size:13px;color:var(--faint);font-family:'IBM Plex Mono'}
+
+.demo{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.demo .viewport{aspect-ratio:1/1;display:grid;place-items:center;background:
+  linear-gradient(45deg,var(--panel2) 25%,transparent 25%,transparent 75%,var(--panel2) 75%),
+  linear-gradient(45deg,var(--panel2) 25%,transparent 25%,transparent 75%,var(--panel2) 75%);
+  background-color:var(--bg);background-size:22px 22px;background-position:0 0,11px 11px}
+.demo canvas{image-rendering:pixelated;width:72%;height:72%}
+.demo .bar{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--line);font-family:'IBM Plex Mono';font-size:11px;color:var(--faint)}
+.demo .bar b{color:var(--text);font-weight:500}
+.demo .bar button{background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:4px;padding:5px 10px;font:12px/1 'IBM Plex Mono';cursor:pointer}
+.demo .bar button:hover{border-color:var(--accent)}
+
+/* ---- section shell ---- */
+section{padding-block:56px;border-top:1px solid var(--line)}
+section > .head{max-width:56ch;margin-bottom:34px}
+section > .head h2{font-size:clamp(22px,3vw,30px);margin-top:8px}
+section > .head p{color:var(--muted);margin-top:10px}
+
+/* ---- pipeline ---- */
+.pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+@media (max-width:760px){.pipeline{grid-template-columns:1fr}}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px}
+.step .n{font-family:'Silkscreen';font-size:12px;color:var(--accent-dim);letter-spacing:.08em}
+.step h3{font-size:17px;margin-top:8px}
+.step p{color:var(--muted);font-size:14.5px;margin-top:8px}
+.step code{font-family:'IBM Plex Mono';font-size:12.5px;background:var(--panel2);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+/* ---- feature sheet ---- */
+.sheet{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.sheet .grid{display:grid;grid-template-columns:repeat(4,1fr)}
+@media (max-width:760px){.sheet .grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:420px){.sheet .grid{grid-template-columns:1fr}}
+.cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:20px 18px;min-width:0}
+.cell:nth-child(4n){border-right:none}
+.cell .tag{font-family:'IBM Plex Mono';font-size:10px;color:var(--faint);letter-spacing:.08em}
+.cell h4{font-size:15px;margin-top:8px;font-family:'IBM Plex Sans';font-weight:600}
+.cell p{font-size:13.5px;color:var(--muted);margin-top:6px}
+
+/* ---- export sample ---- */
+.export{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media (max-width:760px){.export{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;min-width:0}
+.panel .lbl{font-family:'IBM Plex Mono';font-size:11px;color:var(--faint);letter-spacing:.08em;margin-bottom:10px}
+.sheetpreview{image-rendering:pixelated;width:100%;background:var(--panel2);border-radius:5px}
+pre{margin:0;font-family:'IBM Plex Mono';font-size:12px;line-height:1.55;color:var(--muted);overflow-x:auto;white-space:pre}
+pre b{color:var(--accent)}
+
+/* ---- pricing ---- */
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media (max-width:760px){.tiers{grid-template-columns:1fr}}
+.tier{border:1px solid var(--line);border-radius:8px;padding:24px;background:var(--panel);display:flex;flex-direction:column;gap:14px}
+.tier.featured{border-color:var(--accent)}
+.tier .name{font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.tier .price{font-family:'Silkscreen';font-size:28px}
+.tier .price small{font-family:'IBM Plex Sans';font-size:13px;color:var(--muted);font-weight:400}
+.tier ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;font-size:14px;color:var(--text)}
+.tier ul li{padding-left:18px;position:relative}
+.tier ul li::before{content:"";position:absolute;left:0;top:7px;width:7px;height:7px;background:var(--accent);border-radius:1px}
+.tier .pay{font-size:12px;color:var(--faint);font-family:'IBM Plex Mono'}
+
+/* ---- access ---- */
+.access{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:32px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}
+.access .copy h2{font-size:21px}
+.access .copy p{color:var(--muted);margin-top:8px;max-width:46ch}
+.access .box{min-width:260px;flex:1}
+.reveal{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:10px 12px}
+.reveal span{font-family:'IBM Plex Mono';font-size:13.5px;flex:1;word-break:break-all}
+.reveal button{background:none;border:none;color:var(--accent);font:600 12px/1 'IBM Plex Mono';cursor:pointer;white-space:nowrap}
+.note{font-size:12px;color:var(--faint);margin-top:10px}
+
+footer{padding-block:36px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--faint)}
+</style>
+
+<nav><div class="wrap row">
+  <div class="mark">SPRITE<span>FORGE</span></div>
+  <div class="spacer"></div>
+  <div class="links"><a href="#pipeline">How it works</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div>
+  <a class="btn btn-ghost" href="#access" style="padding:9px 16px;font-size:13px">Request access</a>
+</div></nav>
+
+<header class="wrap hero">
+  <div>
+    <div class="eyebrow">Generation engine for 2D fighters</div>
+    <h1 style="margin-top:10px">Trait-based sprite generation for <em>fighting games</em>, not just pretty pictures</h1>
+    <p class="lead">Define a trait library once — bodies, palettes, weapons, rarities. Generate full fighters with animations and hit boxes already in place, export game-ready sheets, and drive the whole thing from your own agent over MCP.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#access">Request access</a>
+      <a class="btn btn-ghost" href="#pipeline">See how it works</a>
+    </div>
+    <div class="proof">live demo — Taiyu, a character built in the editor, playing back frame by frame</div>
+  </div>
+  <div class="demo">
+    <div class="viewport"><canvas id="fighterCanvas" width="192" height="192"></canvas></div>
+    <div class="bar">
+      <span>playing <b class="mono" id="seedLabel">idle-down</b></span>
+      <button id="rerollBtn" type="button">next move ⟳</button>
+    </div>
+  </div>
+</header>
+
+<section id="pipeline" class="wrap">
+  <div class="head">
+    <div class="eyebrow">Pipeline</div>
+    <h2>From trait sheet to export, in three passes</h2>
+    <p>The same pipeline whether a person is drawing or an agent is calling the tools.</p>
+  </div>
+  <div class="pipeline">
+    <div class="step">
+      <div class="n">01 — DEFINE</div>
+      <h3>Lay out the trait sheet</h3>
+      <p>Bodies, heads, weapons, palettes — each trait a small sprite with a rarity weight. Set width, height, and how many frames an idle and an attack need.</p>
+    </div>
+    <div class="step">
+      <div class="n">02 — GENERATE</div>
+      <h3>Recombine and animate</h3>
+      <p>The engine draws combinations, keeps hit/hurt boxes consistent across frames, and flags collisions before anything ships. <code>draw</code>, <code>edit_frames</code>, <code>set_hitboxes</code> over MCP, or by hand in the editor.</p>
+    </div>
+    <div class="step">
+      <div class="n">03 — EXPORT</div>
+      <h3>Ship or mint</h3>
+      <p>One call renders a sprite sheet PNG plus an Aseprite-style atlas JSON — frame rects, FPS, loop flags, hit boxes — ready for Phaser, Unity, or a Metaplex metadata pass.</p>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="wrap">
+  <div class="head">
+    <div class="eyebrow">Spec sheet</div>
+    <h2>Built for fighters specifically</h2>
+    <p>Not a general image generator wearing a game skin — the primitives are frames, hit boxes, and animation state.</p>
+  </div>
+  <div class="sheet"><div class="grid">
+    <div class="cell"><div class="tag">TRAITS</div><h4>Rarity-weighted recombination</h4><p>Dedupe, exclusions, and weighted draws so a collection doesn't repeat itself.</p></div>
+    <div class="cell"><div class="tag">COMBAT</div><h4>Hurt and hit boxes per frame</h4><p>Boxes travel with the animation, not bolted on after the art is done.</p></div>
+    <div class="cell"><div class="tag">AGENTS</div><h4>13 MCP tools</h4><p>create, draw, set_frame, edit_animation, export_sheet and more — any MCP client can run the pipeline unattended.</p></div>
+    <div class="cell"><div class="tag">EXPORT</div><h4>Engine-ready atlases</h4><p>Aseprite-style JSON + PNG sheet. Reads straight into Phaser, Godot, or Unity's sprite importer.</p></div>
+    <div class="cell"><div class="tag">EDITOR</div><h4>Pixel editor included</h4><p>Pencil, fill, mirror-X, onion skin, timeline — for the frames worth a human pass.</p></div>
+    <div class="cell"><div class="tag">FORMAT</div><h4>Open JSON, not a lock-in</h4><p>Every sprite is plain text rows over a palette. Readable, diffable, yours.</p></div>
+    <div class="cell"><div class="tag">MINT</div><h4>Mint-pipeline compatible</h4><p>Export maps cleanly to Metaplex-style metadata — minting itself stays a separate, audited step.</p></div>
+    <div class="cell"><div class="tag">SCALE</div><h4>Batches, not one-offs</h4><p>Generate a hundred variants from one trait sheet in the time it takes to hand-draw three.</p></div>
+  </div></div>
+</section>
+
+<section class="wrap">
+  <div class="head">
+    <div class="eyebrow">Sample export</div>
+    <h2>What comes out the other end</h2>
+  </div>
+  <div class="export">
+    <div class="panel">
+      <div class="lbl">taiyu-sheet.png — 10 animations × 4 frames</div>
+      <img class="sheetpreview" src="taiyu/sheet.png" alt="Taiyu sprite sheet: idle, walk and punch animations in four directions, four frames each" loading="lazy">
+    </div>
+    <div class="panel">
+      <div class="lbl">atlas.json — excerpt</div>
+      <pre>{
+  "frames": {
+    "punch_1": {
+      "frame": { "x": 32, "y": 0, "w": 32, "h": 32 },
+      "duration": 83,
+      "hitboxes": [
+        { "kind": <b>"hurt"</b>, "x": 6, "y": 4, "w": 18, "h": 24 },
+        { "kind": <b>"hit"</b>,  "x": 22, "y": 11, "w": 7, "h": 6 }
+      ]
+    }
+  },
+  "meta": {
+    "frameTags": [
+      { "name": "punch", "fps": 12, "loop": false, "row": 1 }
+    ]
+  }
+}</pre>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="wrap">
+  <div class="head">
+    <div class="eyebrow">Pricing</div>
+    <h2>Credits, not a subscription you forget about</h2>
+    <p>One credit renders one frame at full resolution. Pay by card or by wallet — same credits either way.</p>
+  </div>
+  <div class="tiers">
+    <div class="tier">
+      <div class="name">Sketch</div>
+      <div class="price">Free<small> · 150 credits/mo</small></div>
+      <ul><li>Editor + 2 trait sheets</li><li>PNG export</li><li>Card payment only</li></ul>
+      <div class="pay">no card required</div>
+    </div>
+    <div class="tier featured">
+      <div class="name">Studio</div>
+      <div class="price">$39<small> / mo · 4,000 credits</small></div>
+      <ul><li>Unlimited trait sheets</li><li>MCP access — 13 tools</li><li>Atlas + hit box export</li><li>Card or wallet (SOL, USDC)</li></ul>
+      <div class="pay">top up anytime, credits roll over 60 days</div>
+    </div>
+    <div class="tier">
+      <div class="name">Collection</div>
+      <div class="price">Custom</div>
+      <ul><li>Batch generation for a full drop</li><li>Metaplex-ready metadata pass</li><li>Dedicated rarity review</li></ul>
+      <div class="pay">priced per collection size</div>
+    </div>
+  </div>
+</section>
+
+<section id="access" class="wrap">
+  <div class="access">
+    <div class="copy">
+      <h2>This is a preview</h2>
+      <p>Sprite Forge is in early build — the editor and the MCP server both run today; billing and multi-tenant accounts don't exist yet. Reach out and I'll set you up directly.</p>
+    </div>
+    <div class="box">
+      <div class="reveal"><span id="contactText">tap to reveal contact</span><button id="revealBtn" type="button">show</button></div>
+      <div class="note">Links inside this page may not open reliably in every viewer — the address above is shown as plain text so you can copy it.</div>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <div>Sprite Forge — pixel generation for fighters, preview build.</div>
+  <div class="mono">sprite-forge/1 format · MCP-ready</div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  // ---- Taiyu, a character drawn in the editor — real exported frames, not a placeholder ----
+  var MOVES = [
+    {name:"idle-down", fps:5,  files:["taiyu/idle-down-1.png","taiyu/idle-down-2.png","taiyu/idle-down-3.png","taiyu/idle-down-4.png"]},
+    {name:"walk-right", fps:8, files:["taiyu/walk-right-1.png","taiyu/walk-right-2.png","taiyu/walk-right-3.png","taiyu/walk-right-4.png"]},
+    {name:"punch-right", fps:12, files:["taiyu/punch-right-1.png","taiyu/punch-right-2.png","taiyu/punch-right-3.png","taiyu/punch-right-4.png"]}
+  ];
+  var images = {};
+  MOVES.forEach(function(m){ m.files.forEach(function(f){ if(!images[f]){ var im=new Image(); im.src=f; images[f]=im; } }); });
+
+  var cv = document.getElementById("fighterCanvas");
+  var ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  var moveIdx = 0, frameIdx = 0, lastT = 0;
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function draw(){
+    var m = MOVES[moveIdx];
+    var im = images[m.files[frameIdx]];
+    ctx.clearRect(0,0,192,192);
+    if(im && im.complete && im.naturalWidth) ctx.drawImage(im,0,0,192,192);
+    document.getElementById("seedLabel").textContent = m.name;
+  }
+  function tick(t){
+    if(!reduced){
+      var m = MOVES[moveIdx];
+      if(t - lastT > 1000/m.fps){ frameIdx = (frameIdx+1) % m.files.length; lastT = t; draw(); }
+    }
+    requestAnimationFrame(tick);
+  }
+  draw();
+  requestAnimationFrame(tick);
+  document.getElementById("rerollBtn").addEventListener("click", function(){
+    moveIdx = (moveIdx+1) % MOVES.length; frameIdx = 0; draw();
+  });
+
+  // ---- contact reveal (no fake form submission) ----
+  document.getElementById("revealBtn").addEventListener("click", function(){
+    document.getElementById("contactText").textContent = "iamolder90@gmail.com";
+    this.hidden = true;
+  });
+})();
+</script>

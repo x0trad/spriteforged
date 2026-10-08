@@ -1,0 +1,24 @@
+{
+  "name": "sprite-mcp",
+  "version": "1.0.0",
+  "description": "MCP server that lets Claude create and edit pixel-art sprites (frames, animations, hitboxes) in the Sprite Forge JSON format.",
+  "type": "module",
+  "bin": {
+    "sprite-mcp": "src/server.js"
+  },
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@vercel/blob": "^2.8.0",
+    "pngjs": "^7.0.0",
+    "zod": "^4.6.5"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

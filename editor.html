@@ -1,0 +1,538 @@
+<title>Sprite Forge</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#121419;--panel:#1a1d25;--panel2:#20242e;--line:#2a2f3b;--line2:#3a4050;
+  --text:#e8eaf0;--muted:#8a90a3;--faint:#5b6173;
+  --accent:#f5a623;--accent-ink:#1a1200;--hurt:#38c8cc;--hit:#f0564f;--ok:#6cd08a;
+  --display:'Silkscreen','IBM Plex Mono',monospace;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--body);overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:5px 9px;cursor:pointer;line-height:1.2}
+button:hover{border-color:var(--line2);background:#262b37}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.primary:hover{background:#ffb83d}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--text);background:var(--panel2);border-color:var(--line)}
+button:disabled{opacity:.45;cursor:default}
+input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 7px}
+input[type=number]{width:64px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+label.lbl,.lbl{font-family:var(--display);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.app{display:grid;grid-template-rows:44px 1fr;height:100%}
+header{display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+header .brand{font-family:var(--display);font-size:13px;letter-spacing:.04em;color:var(--accent);white-space:nowrap}
+header .brand small{color:var(--faint);font-size:9px;margin-left:6px}
+header .spacer{flex:1}
+.status{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.status.online .dot{background:var(--ok)}
+.status.saving .dot{background:var(--accent)}
+.status.error .dot{background:var(--hit)}
+main{display:grid;grid-template-columns:52px 1fr 300px;min-height:0}
+.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-right:1px solid var(--line);background:var(--panel)}
+.rail button{width:36px;height:36px;padding:0;display:grid;place-items:center;border-color:transparent;background:transparent;color:var(--muted)}
+.rail button:hover{color:var(--text);background:var(--panel2)}
+.rail button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rail .sep{width:24px;height:1px;background:var(--line);margin:4px 0}
+.rail svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.stage{display:grid;grid-template-rows:36px 1fr 132px;min-width:0;min-height:0}
+.stagebar{display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.stagebar .grp{display:flex;align-items:center;gap:6px}
+.stagebar input[type=checkbox]{accent-color:var(--accent)}
+.stagebar .pos{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:72px}
+.viewport{position:relative;overflow:auto;background:
+  linear-gradient(45deg,#181b22 25%,transparent 25%,transparent 75%,#181b22 75%),
+  linear-gradient(45deg,#181b22 25%,transparent 25%,transparent 75%,#181b22 75%);
+  background-color:#14161c;background-size:24px 24px;background-position:0 0,12px 12px}
+.viewport .center{min-width:100%;min-height:100%;display:grid;place-items:center;padding:24px}
+#canvas{image-rendering:pixelated;box-shadow:0 0 0 1px var(--line2),0 20px 60px rgba(0,0,0,.5);cursor:crosshair;touch-action:none;background:
+  linear-gradient(45deg,#3a3f4b 25%,transparent 25%,transparent 75%,#3a3f4b 75%),
+  linear-gradient(45deg,#3a3f4b 25%,transparent 25%,transparent 75%,#3a3f4b 75%);
+  background-color:#2b2f39;background-size:16px 16px;background-position:0 0,8px 8px}
+.timeline{border-top:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:30px 1fr}
+.tlbar{display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--line)}
+.tlbar select{padding:2px 6px}
+.tlbar .fps{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:12px}
+.frames{display:flex;gap:8px;padding:10px;overflow-x:auto;align-items:center}
+.frame{flex:none;position:relative;border:2px solid var(--line);border-radius:4px;background:#2b2f39;cursor:pointer;padding:3px}
+.frame canvas{display:block;image-rendering:pixelated;width:56px;height:56px}
+.frame.on{border-color:var(--accent)}
+.frame .n{position:absolute;left:4px;top:2px;font-family:var(--display);font-size:8px;color:#fff;text-shadow:0 1px 2px #000}
+.frame .d{position:absolute;right:4px;bottom:2px;font-family:var(--mono);font-size:9px;color:#fff;text-shadow:0 1px 2px #000}
+.frames .add{flex:none;width:64px;height:64px;border:1px dashed var(--line2);border-radius:4px;color:var(--muted);background:transparent}
+.inspector{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;display:flex;flex-direction:column}
+.sec{padding:12px 14px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 8px;font-family:var(--display);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:space-between}
+.sec h3 button{padding:2px 6px;font-size:11px;font-family:var(--body);text-transform:none;letter-spacing:0}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row+.row{margin-top:6px}
+.palette{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.sw{aspect-ratio:1;border-radius:3px;border:1px solid rgba(255,255,255,.08);cursor:pointer;position:relative}
+.sw.on{outline:2px solid #fff;outline-offset:1px}
+.sw.t{background:
+  linear-gradient(45deg,#3a3f4b 25%,transparent 25%,transparent 75%,#3a3f4b 75%),
+  linear-gradient(45deg,#3a3f4b 25%,transparent 25%,transparent 75%,#3a3f4b 75%);
+  background-color:#2b2f39;background-size:8px 8px;background-position:0 0,4px 4px}
+.sw.add{display:grid;place-items:center;color:var(--muted);border-style:dashed;border-color:var(--line2)}
+.cur{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cur .big{width:28px;height:28px;border-radius:4px;border:1px solid var(--line2)}
+.cur input[type=color]{width:28px;height:28px;padding:0;border:none;background:none;cursor:pointer}
+.cur code{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.hb{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;padding:3px 0}
+.hb .k{width:8px;height:8px;border-radius:2px}
+.hb .k.hurt{background:var(--hurt)}.hb .k.hit{background:var(--hit)}
+.hb .x{margin-left:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:none;border-radius:0;padding:4px 9px;background:transparent}
+.seg button.on{background:var(--panel2);color:var(--text)}
+.seg button.hurt.on{color:var(--hurt)}.seg button.hit.on{color:var(--hit)}
+textarea{width:100%;min-height:64px;resize:vertical;font-family:var(--body)}
+.ai .out{font-size:12px;color:var(--muted);min-height:18px}
+.preview{display:flex;gap:10px;align-items:center}
+#previewCanvas{image-rendering:pixelated;background:#2b2f39;border-radius:4px;border:1px solid var(--line)}
+.kbd{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.help{font-size:12px;color:var(--muted);line-height:1.5}
+.help code{font-family:var(--mono);font-size:11px;color:var(--text)}
+.toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:8px 14px;border-radius:6px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:18px;width:min(420px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h2{margin:0 0 12px;font-family:var(--display);font-size:12px;color:var(--accent)}
+dialog .row{margin-top:8px}
+dialog textarea{font-family:var(--mono);font-size:11px;min-height:200px;white-space:pre}
+.ascii{font-family:var(--mono);font-size:10px;white-space:pre;line-height:1.1;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px;overflow:auto;max-height:180px;color:var(--muted)}
+@media (max-width:900px){
+  main{grid-template-columns:52px 1fr}
+  .inspector{display:none}
+}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<div class="app">
+<header>
+  <div class="brand">SPRITE FORGE<small>v1</small></div>
+  <select id="spriteSel" title="Sprite"></select>
+  <button id="newSprite">New sprite</button>
+  <button id="renameSprite" class="ghost">Rename</button>
+  <button id="deleteSprite" class="ghost">Delete</button>
+  <div class="spacer"></div>
+  <button id="importBtn" class="ghost">Import PNG</button>
+  <button id="jsonBtn" class="ghost">JSON</button>
+  <button id="exportBtn" class="primary">Export sheet</button>
+  <div class="status" id="status"><span class="dot"></span><span id="statusText">Local only</span></div>
+</header>
+<main>
+  <nav class="rail" id="rail">
+    <button data-tool="pencil" title="Pencil (B)"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M13 8l3 3"/></svg></button>
+    <button data-tool="eraser" title="Eraser (E)"><svg viewBox="0 0 24 24"><path d="M6 19h12"/><path d="M4 14l9-9 6 6-7 7H8z"/></svg></button>
+    <button data-tool="fill" title="Fill (G)"><svg viewBox="0 0 24 24"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15c0 2 1.5 3 1.5 4a1.5 1.5 0 0 1-3 0c0-1 1.5-2 1.5-4z"/></svg></button>
+    <button data-tool="line" title="Line (L)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button>
+    <button data-tool="rect" title="Rectangle (R)"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12"/></svg></button>
+    <button data-tool="picker" title="Eyedropper (I)"><svg viewBox="0 0 24 24"><path d="M4 20l1-4 9-9 3 3-9 9z"/><path d="M14 7l3-3 3 3-3 3"/></svg></button>
+    <div class="sep"></div>
+    <button data-tool="hitbox" title="Hitbox (H)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke-dasharray="3 2"/></svg></button>
+    <div class="sep"></div>
+    <button id="undoBtn" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button id="redoBtn" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+  </nav>
+
+  <section class="stage">
+    <div class="stagebar">
+      <div class="grp"><span class="lbl">Zoom</span><input id="zoom" type="range" min="2" max="32" value="12" style="width:100px"><span class="pos" id="zoomText">12x</span></div>
+      <div class="grp"><input id="grid" type="checkbox" checked><label for="grid">Grid</label></div>
+      <div class="grp"><input id="onion" type="checkbox" checked><label for="onion">Onion skin</label></div>
+      <div class="grp"><input id="mirror" type="checkbox"><label for="mirror">Mirror X</label></div>
+      <div class="grp"><input id="showHb" type="checkbox" checked><label for="showHb">Hitboxes</label></div>
+      <div class="spacer" style="flex:1"></div>
+      <span class="pos" id="pos">–</span>
+      <span class="pos" id="dims"></span>
+    </div>
+    <div class="viewport" id="viewport"><div class="center"><canvas id="canvas"></canvas></div></div>
+    <div class="timeline">
+      <div class="tlbar">
+        <span class="lbl">Animation</span>
+        <select id="animSel"></select>
+        <button id="addAnim" class="ghost" title="New animation">+</button>
+        <button id="renameAnim" class="ghost">Rename</button>
+        <button id="delAnim" class="ghost">Delete</button>
+        <span class="fps"><span class="lbl">FPS</span><input id="fps" type="number" min="1" max="60" value="8"></span>
+        <label class="fps"><input id="loop" type="checkbox" checked> loop</label>
+        <span style="flex:1"></span>
+        <button id="playBtn">▶ Play</button>
+        <button id="dupFrame" class="ghost" title="Duplicate frame">Duplicate</button>
+        <button id="moveL" class="ghost" title="Move frame left">◀</button>
+        <button id="moveR" class="ghost" title="Move frame right">▶</button>
+        <button id="delFrame" class="ghost">Delete frame</button>
+      </div>
+      <div class="frames" id="frames"></div>
+    </div>
+  </section>
+
+  <aside class="inspector">
+    <div class="sec">
+      <h3>Color</h3>
+      <div class="cur">
+        <div class="big" id="curSw"></div>
+        <input type="color" id="curColor" title="Edit this palette color">
+        <code id="curHex">#000000</code>
+        <button class="ghost" id="removeColor" title="Remove color from palette">Remove</button>
+      </div>
+      <div class="palette" id="palette"></div>
+    </div>
+    <div class="sec">
+      <h3>Preview</h3>
+      <div class="preview"><canvas id="previewCanvas" width="96" height="96"></canvas>
+        <div class="help">Plays the current animation at its FPS.<br><span class="kbd">[ ]</span> prev / next frame<br><span class="kbd">Space</span> play / pause</div></div>
+    </div>
+    <div class="sec">
+      <h3>Frame <span id="frameLabel" class="kbd"></span></h3>
+      <div class="row"><span class="lbl">Hold</span><input id="frameDur" type="number" min="1" max="60" value="1"><span class="help">ticks at animation FPS</span></div>
+    </div>
+    <div class="sec">
+      <h3>Hitboxes <button id="copyHb" class="ghost" title="Copy hitboxes from previous frame">Copy prev</button></h3>
+      <div class="row"><span class="lbl">Draw as</span>
+        <div class="seg"><button class="hurt on" data-kind="hurt">hurt</button><button class="hit" data-kind="hit">hit</button></div>
+        <span class="help">drag on canvas with the hitbox tool</span></div>
+      <div id="hbList"></div>
+    </div>
+    <div class="sec ai">
+      <h3>Ask Claude</h3>
+      <textarea id="aiPrompt" placeholder="e.g. a small orange space dog in a fighting stance, side view, facing right"></textarea>
+      <div class="row">
+        <button id="aiNew" class="primary">Generate frame</button>
+        <button id="aiNext">Next frame</button>
+        <button id="aiStop" class="ghost" hidden>Stop</button>
+      </div>
+      <div class="out" id="aiOut"></div>
+    </div>
+    <div class="sec">
+      <h3>Frame as text</h3>
+      <div class="ascii" id="ascii"></div>
+      <div class="help" style="margin-top:6px">This is exactly how the MCP server and Claude see the frame: one character per pixel, <code>.</code> is transparent, other characters index the palette.</div>
+    </div>
+  </aside>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileIn" accept="image/png,application/json,.json" hidden>
+
+<dialog id="newDlg">
+  <h2>New sprite</h2>
+  <div class="row"><label class="lbl" for="nName">Name</label><input id="nName" type="text" value="Fighter" style="flex:1"></div>
+  <div class="row"><label class="lbl" for="nW">Size</label><input id="nW" type="number" value="32" min="4" max="128"> × <input id="nH" type="number" value="32" min="4" max="128"></div>
+  <div class="row" style="justify-content:flex-end"><button id="nCancel" class="ghost">Cancel</button><button id="nOk" class="primary">Create</button></div>
+</dialog>
+
+<dialog id="jsonDlg">
+  <h2>Sprite JSON</h2>
+  <div class="help">Same format the <code>sprite-mcp</code> server reads and writes. Paste a sprite JSON here to load it.</div>
+  <textarea id="jsonText"></textarea>
+  <div class="row" style="justify-content:flex-end"><button id="jCopy" class="ghost">Copy</button><button id="jSave" class="ghost">Download</button><button id="jLoad" class="primary">Load into editor</button><button id="jClose" class="ghost">Close</button></div>
+</dialog>
+
+<dialog id="importDlg">
+  <h2>Import PNG</h2>
+  <div class="help">Frames are sliced left to right. Set the frame size to match the sheet; a single image imports as one frame.</div>
+  <div class="row"><label class="lbl" for="iW">Frame</label><input id="iW" type="number" value="32"> × <input id="iH" type="number" value="32"></div>
+  <div class="row"><label class="lbl" for="iAnim">Into animation</label><input id="iAnim" type="text" value="import" style="flex:1"></div>
+  <div class="row" style="justify-content:flex-end"><button id="iCancel" class="ghost">Cancel</button><button id="iOk" class="primary">Import</button></div>
+</dialog>
+
+<script>
+/* ---------- Sprite format (shared with sprite-mcp) ----------
+{ format:"sprite-forge/1", id, name, width, height,
+  palette:["#rrggbb",...],            // index i is written as ALPHA[i]
+  animations:[{name, fps, loop, frames:[{rows:["....",...], duration, hitboxes:[{kind,x,y,w,h}]}]}],
+  updatedAt, rev }
+*/
+const ALPHA="0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const T='.';
+const cIdx=c=>c===T?-1:ALPHA.indexOf(c);
+const iChr=i=>i<0?T:ALPHA[i];
+const clientId=Math.random().toString(36).slice(2,10);
+let revN=0;
+const $=id=>document.getElementById(id);
+
+/* ---------- Starter sprite (example content) ---------- */
+function starterSprite(){
+  const palette=["#1b1b24","#f5a623","#ffd27a","#ffffff","#3b2a12","#f0564f","#38c8cc"];
+  const idle=[
+"........................",
+"........................",
+"........................",
+".......0000.............",
+"......011110............",
+".....01111110...........",
+".....01313110...........",
+".....01111110..00.......",
+".....01144110.011.......",
+"......011110..011.......",
+".......0000...011.......",
+"......011110..011.......",
+".....01111110011........",
+"....0111111110110.......",
+"....0111551111100.......",
+"....0111111111110.......",
+".....011111111110.......",
+".....0110....0110.......",
+".....0110....0110.......",
+"....01110....01110......",
+"....00000....00000......",
+"........................",
+"........................",
+"........................"];
+  const punch=idle.map(r=>r);
+  punch[13]="....0111111110110.......";
+  punch[14]="....0111551111111000....";
+  punch[15]="....0111111111111110....";
+  punch[16]=".....0111111111100000...";
+  return {format:"sprite-forge/1",id:"example-fighter",name:"Example fighter",width:24,height:24,palette,
+    animations:[
+      {name:"idle",fps:6,loop:true,frames:[
+        {rows:idle,duration:2,hitboxes:[{kind:"hurt",x:4,y:3,w:13,h:18}]},
+        {rows:idle.map((r,y)=>y===0?r:idle[y-1]),duration:2,hitboxes:[{kind:"hurt",x:4,y:4,w:13,h:18}]}]},
+      {name:"punch",fps:12,loop:false,frames:[
+        {rows:idle,duration:1,hitboxes:[{kind:"hurt",x:4,y:3,w:13,h:18}]},
+        {rows:punch,duration:2,hitboxes:[{kind:"hurt",x:4,y:3,w:13,h:18},{kind:"hit",x:16,y:13,w:5,h:4}]}]}
+    ],updatedAt:Date.now(),rev:"seed"};
+}
+
+/* ---------- State ---------- */
+const S={sprites:new Map(),id:null,anim:0,frame:0,tool:"pencil",color:1,zoom:12,hbKind:"hurt",
+  playing:false,drag:null,hover:null,undo:new Map(),redo:new Map()};
+let db=null,downloads=null,sample=null;
+let unsub=null;const pendingWrite=new Map();const dirty=new Set();const seenRev=new Map();
+
+const cur=()=>S.sprites.get(S.id);
+const anim=()=>{const s=cur();return s?s.animations[Math.min(S.anim,s.animations.length-1)]:null};
+const frame=()=>{const a=anim();return a?a.frames[Math.min(S.frame,a.frames.length-1)]:null};
+function clampSel(){const s=cur();if(!s)return;S.anim=Math.max(0,Math.min(S.anim,s.animations.length-1));const a=anim();S.frame=Math.max(0,Math.min(S.frame,a.frames.length-1));}
+
+/* ---------- Undo ---------- */
+function snapshot(){const s=cur();if(!s)return;const st=S.undo.get(s.id)||[];st.push(JSON.stringify(s));if(st.length>80)st.shift();S.undo.set(s.id,st);S.redo.set(s.id,[]);}
+function undo(){const s=cur();const st=S.undo.get(s.id)||[];if(!st.length)return;(S.redo.get(s.id)||S.redo.set(s.id,[]).get(s.id)).push(JSON.stringify(s));S.sprites.set(s.id,JSON.parse(st.pop()));clampSel();changed();}
+function redo(){const s=cur();const st=S.redo.get(s.id)||[];if(!st.length)return;S.undo.get(s.id).push(JSON.stringify(s));S.sprites.set(s.id,JSON.parse(st.pop()));clampSel();changed();}
+
+/* ---------- Pixel ops ---------- */
+function grid(f){return f.rows.map(r=>r.split(""))}
+function ungrid(f,g){f.rows=g.map(r=>r.join(""))}
+function setPx(g,x,y,c,s){if(x<0||y<0||x>=s.width||y>=s.height)return;g[y][x]=c;if($("mirror").checked){const mx=s.width-1-x;g[y][mx]=c;}}
+function line(g,x0,y0,x1,y1,c,s){const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx+dy;for(;;){setPx(g,x0,y0,c,s);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}}
+function rect(g,x0,y0,x1,y1,c,s,fill){const [a,b]=[Math.min(x0,x1),Math.max(x0,x1)],[c0,d]=[Math.min(y0,y1),Math.max(y0,y1)];for(let y=c0;y<=d;y++)for(let x=a;x<=b;x++)if(fill||y===c0||y===d||x===a||x===b)setPx(g,x,y,c,s);}
+function fill(g,x,y,c,s){const t=g[y]?.[x];if(t===undefined||t===c)return;const st=[[x,y]];while(st.length){const [px,py]=st.pop();if(px<0||py<0||px>=s.width||py>=s.height||g[py][px]!==t)continue;g[py][px]=c;st.push([px+1,py],[px-1,py],[px,py+1],[px,py-1]);}}
+
+/* ---------- Rendering ---------- */
+const cv=$("canvas"),ctx=cv.getContext("2d");
+function paintFrame(c,f,s,alpha=1){c.globalAlpha=alpha;for(let y=0;y<s.height;y++){const r=f.rows[y]||"";for(let x=0;x<s.width;x++){const i=cIdx(r[x]||T);if(i<0||!s.palette[i])continue;c.fillStyle=s.palette[i];c.fillRect(x,y,1,1);}}c.globalAlpha=1;}
+let raf=0;function draw(){cancelAnimationFrame(raf);raf=requestAnimationFrame(_draw);}
+function _draw(){const s=cur();if(!s){cv.width=cv.height=0;return}
+  const z=S.zoom,W=s.width,H=s.height;cv.width=W*z;cv.height=H*z;cv.style.width=W*z+"px";cv.style.height=H*z+"px";
+  ctx.imageSmoothingEnabled=false;ctx.setTransform(z,0,0,z,0,0);
+  const a=anim(),fi=Math.min(S.frame,a.frames.length-1),f=a.frames[fi];
+  if($("onion").checked&&!S.playing){if(fi>0)paintFrame(ctx,a.frames[fi-1],s,.25);if(fi<a.frames.length-1)paintFrame(ctx,a.frames[fi+1],s,.12);}
+  // live preview of drag op
+  let g=null;if(S.drag&&S.drag.preview){g=grid(f);S.drag.preview(g);paintFrame(ctx,{rows:g.map(r=>r.join(""))},s);}else paintFrame(ctx,f,s);
+  ctx.setTransform(1,0,0,1,0,0);
+  if($("grid").checked&&z>=6){ctx.strokeStyle="rgba(255,255,255,.07)";ctx.lineWidth=1;ctx.beginPath();for(let x=1;x<W;x++){ctx.moveTo(x*z+.5,0);ctx.lineTo(x*z+.5,H*z)}for(let y=1;y<H;y++){ctx.moveTo(0,y*z+.5);ctx.lineTo(W*z,y*z+.5)}ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,.18)";ctx.beginPath();ctx.moveTo(Math.floor(W/2)*z+.5,0);ctx.lineTo(Math.floor(W/2)*z+.5,H*z);ctx.stroke();}
+  if($("showHb").checked){const boxes=(f.hitboxes||[]).slice();if(S.drag&&S.drag.hb)boxes.push(S.drag.hb);for(const b of boxes){const col=b.kind==="hit"?"#f0564f":"#38c8cc";ctx.fillStyle=col+"33";ctx.fillRect(b.x*z,b.y*z,b.w*z,b.h*z);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.strokeRect(b.x*z+1,b.y*z+1,b.w*z-2,b.h*z-2);}}
+  if(S.hover&&!S.playing){ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=1;ctx.strokeRect(S.hover.x*z+.5,S.hover.y*z+.5,z-1,z-1);}
+}
+function thumb(c,f,s,size){c.width=s.width;c.height=s.height;const x=c.getContext("2d");x.clearRect(0,0,s.width,s.height);paintFrame(x,f,s);}
+
+function renderAll(){const s=cur();
+  // sprite select
+  const sel=$("spriteSel");sel.innerHTML="";for(const sp of S.sprites.values()){const o=document.createElement("option");o.value=sp.id;o.textContent=`${sp.name} · ${sp.width}×${sp.height}`;sel.appendChild(o);}sel.value=S.id||"";
+  if(!s){$("frames").innerHTML="";$("dims").textContent="";draw();return}
+  $("dims").textContent=`${s.width}×${s.height}`;
+  const a=anim(),f=frame();
+  const as=$("animSel");as.innerHTML="";s.animations.forEach((an,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${an.name} (${an.frames.length})`;as.appendChild(o)});as.value=S.anim;
+  $("fps").value=a.fps;$("loop").checked=!!a.loop;$("frameDur").value=f.duration||1;$("frameLabel").textContent=`${a.name} #${S.frame+1}/${a.frames.length}`;
+  const fr=$("frames");fr.innerHTML="";a.frames.forEach((ff,i)=>{const d=document.createElement("div");d.className="frame"+(i===S.frame?" on":"");const c=document.createElement("canvas");thumb(c,ff,s);d.appendChild(c);const n=document.createElement("span");n.className="n";n.textContent=i+1;d.appendChild(n);if((ff.duration||1)>1){const du=document.createElement("span");du.className="d";du.textContent="×"+ff.duration;d.appendChild(du)}d.onclick=()=>{S.frame=i;renderAll()};fr.appendChild(d)});
+  const add=document.createElement("button");add.className="add";add.textContent="+ frame";add.onclick=()=>addFrame(false);fr.appendChild(add);
+  // palette
+  const p=$("palette");p.innerHTML="";const t=document.createElement("div");t.className="sw t"+(S.color<0?" on":"");t.title="transparent";t.onclick=()=>{S.color=-1;renderAll()};p.appendChild(t);
+  s.palette.forEach((col,i)=>{const d=document.createElement("div");d.className="sw"+(i===S.color?" on":"");d.style.background=col;d.title=`${iChr(i)} ${col}`;d.onclick=()=>{S.color=i;S.tool==="eraser"&&setTool("pencil");renderAll()};p.appendChild(d)});
+  if(s.palette.length<ALPHA.length){const ad=document.createElement("div");ad.className="sw add";ad.textContent="+";ad.title="Add color";ad.onclick=()=>{snapshot();s.palette.push("#"+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,"0"));S.color=s.palette.length-1;changed()};p.appendChild(ad)}
+  const col=S.color>=0?s.palette[S.color]:null;$("curSw").style.background=col||"transparent";$("curSw").className="big"+(col?"":" sw t");$("curHex").textContent=col?`${iChr(S.color)} ${col}`:". transparent";$("curColor").value=col||"#000000";$("curColor").disabled=!col;$("removeColor").disabled=!col;
+  // hitboxes
+  const hl=$("hbList");hl.innerHTML="";(f.hitboxes||[]).forEach((b,i)=>{const d=document.createElement("div");d.className="hb";d.innerHTML=`<span class="k ${b.kind}"></span>${b.kind} <span>${b.x},${b.y} ${b.w}×${b.h}</span>`;const x=document.createElement("button");x.className="ghost x";x.textContent="×";x.onclick=()=>{snapshot();f.hitboxes.splice(i,1);changed()};d.appendChild(x);hl.appendChild(d)});
+  if(!(f.hitboxes||[]).length)hl.innerHTML='<div class="help">No hitboxes on this frame.</div>';
+  $("ascii").textContent=f.rows.join("\n");
+  document.querySelectorAll("#rail [data-tool]").forEach(b=>b.classList.toggle("on",b.dataset.tool===S.tool));
+  $("undoBtn").disabled=!(S.undo.get(s.id)||[]).length;$("redoBtn").disabled=!(S.redo.get(s.id)||[]).length;
+  draw();
+}
+function changed(){const s=cur();if(s){s.updatedAt=Date.now();dirty.add(s.id);scheduleSave();}renderAll();}
+
+/* ---------- Tools / input ---------- */
+function setTool(t){S.tool=t;renderAll()}
+document.querySelectorAll("#rail [data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$("undoBtn").onclick=undo;$("redoBtn").onclick=redo;
+function pxAt(e){const r=cv.getBoundingClientRect();const x=Math.floor((e.clientX-r.left)/S.zoom),y=Math.floor((e.clientY-r.top)/S.zoom);return {x,y}}
+const colorChar=()=>S.tool==="eraser"?T:iChr(S.color);
+cv.addEventListener("pointerdown",e=>{const s=cur();if(!s||S.playing)return;e.preventDefault();cv.setPointerCapture(e.pointerId);const p=pxAt(e);const f=frame();
+  if(S.tool==="picker"||e.altKey){const i=cIdx(f.rows[p.y]?.[p.x]||T);S.color=i;renderAll();return}
+  snapshot();
+  if(S.tool==="pencil"||S.tool==="eraser"){const g=grid(f);setPx(g,p.x,p.y,colorChar(),s);ungrid(f,g);S.drag={kind:"paint",last:p};changed();}
+  else if(S.tool==="fill"){const g=grid(f);fill(g,p.x,p.y,colorChar(),s);ungrid(f,g);changed();}
+  else if(S.tool==="line"||S.tool==="rect"){const c=colorChar(),t=S.tool,fillR=e.shiftKey;S.drag={kind:t,a:p,b:p,preview(g){t==="line"?line(g,p.x,p.y,S.drag.b.x,S.drag.b.y,c,s):rect(g,p.x,p.y,S.drag.b.x,S.drag.b.y,c,s,fillR)}};draw();}
+  else if(S.tool==="hitbox"){S.drag={kind:"hb",a:p,hb:{kind:S.hbKind,x:p.x,y:p.y,w:1,h:1}};draw();}
+});
+cv.addEventListener("pointermove",e=>{const s=cur();if(!s)return;const p=pxAt(e);S.hover=(p.x>=0&&p.y>=0&&p.x<s.width&&p.y<s.height)?p:null;$("pos").textContent=S.hover?`${p.x},${p.y}`:"–";
+  if(!S.drag){draw();return}
+  const f=frame();
+  if(S.drag.kind==="paint"){const g=grid(f);line(g,S.drag.last.x,S.drag.last.y,p.x,p.y,colorChar(),s);ungrid(f,g);S.drag.last=p;$("ascii").textContent=f.rows.join("\n");draw();}
+  else if(S.drag.kind==="line"||S.drag.kind==="rect"){S.drag.b=p;draw();}
+  else if(S.drag.kind==="hb"){const a=S.drag.a,x0=Math.max(0,Math.min(a.x,p.x)),y0=Math.max(0,Math.min(a.y,p.y)),x1=Math.min(s.width-1,Math.max(a.x,p.x)),y1=Math.min(s.height-1,Math.max(a.y,p.y));S.drag.hb={kind:S.hbKind,x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};draw();}
+});
+function endDrag(){const s=cur();if(!s||!S.drag)return;const f=frame();
+  if(S.drag.kind==="line"||S.drag.kind==="rect"){const g=grid(f);S.drag.preview(g);ungrid(f,g);}
+  else if(S.drag.kind==="hb"){(f.hitboxes||(f.hitboxes=[])).push(S.drag.hb);}
+  S.drag=null;changed();}
+cv.addEventListener("pointerup",endDrag);cv.addEventListener("pointercancel",endDrag);
+cv.addEventListener("pointerleave",()=>{S.hover=null;$("pos").textContent="–";draw()});
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+$("viewport").addEventListener("wheel",e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();S.zoom=Math.max(2,Math.min(32,S.zoom+(e.deltaY<0?1:-1)));$("zoom").value=S.zoom;$("zoomText").textContent=S.zoom+"x";draw()},{passive:false});
+$("zoom").oninput=e=>{S.zoom=+e.target.value;$("zoomText").textContent=S.zoom+"x";draw()};
+["grid","onion","showHb","mirror"].forEach(id=>$(id).onchange=draw);
+document.querySelectorAll(".seg [data-kind]").forEach(b=>b.onclick=()=>{S.hbKind=b.dataset.kind;document.querySelectorAll(".seg [data-kind]").forEach(x=>x.classList.toggle("on",x===b));setTool("hitbox")});
+document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select"))return;const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();e.shiftKey?redo():undo();return}
+  if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redo();return}
+  const map={b:"pencil",e:"eraser",g:"fill",l:"line",r:"rect",i:"picker",h:"hitbox"};if(map[k]){setTool(map[k]);return}
+  if(k==="["){S.frame=Math.max(0,S.frame-1);renderAll()}else if(k==="]"){S.frame=Math.min(anim().frames.length-1,S.frame+1);renderAll()}
+  else if(k===" "){e.preventDefault();togglePlay()}
+  else if(/^[1-9]$/.test(k)){const i=+k-1;if(cur().palette[i]!==undefined){S.color=i;renderAll()}}
+});
+
+/* ---------- Palette editing ---------- */
+$("curColor").oninput=e=>{const s=cur();if(S.color<0)return;s.palette[S.color]=e.target.value;$("curSw").style.background=e.target.value;$("curHex").textContent=`${iChr(S.color)} ${e.target.value}`;draw()};
+$("curColor").onchange=()=>{snapshot();changed()};
+$("removeColor").onclick=()=>{const s=cur();if(S.color<0)return;snapshot();const i=S.color;s.palette.splice(i,1);const rm=iChr(i);for(const a of s.animations)for(const f of a.frames)f.rows=f.rows.map(r=>r.split("").map(c=>{const j=cIdx(c);return j===i?T:j>i?iChr(j-1):c}).join(""));S.color=Math.max(0,i-1);if(!s.palette.length)S.color=-1;changed()};
+
+/* ---------- Frames / animations ---------- */
+function blankFrame(s){return {rows:Array.from({length:s.height},()=>T.repeat(s.width)),duration:1,hitboxes:[]}}
+function addFrame(dup){const s=cur(),a=anim();snapshot();const f=dup?JSON.parse(JSON.stringify(frame())):blankFrame(s);a.frames.splice(S.frame+1,0,f);S.frame++;changed()}
+$("dupFrame").onclick=()=>addFrame(true);
+$("delFrame").onclick=()=>{const a=anim();if(a.frames.length<=1){toast("An animation needs at least one frame");return}snapshot();a.frames.splice(S.frame,1);clampSel();changed()};
+$("moveL").onclick=()=>{const a=anim();if(S.frame===0)return;snapshot();[a.frames[S.frame-1],a.frames[S.frame]]=[a.frames[S.frame],a.frames[S.frame-1]];S.frame--;changed()};
+$("moveR").onclick=()=>{const a=anim();if(S.frame>=a.frames.length-1)return;snapshot();[a.frames[S.frame+1],a.frames[S.frame]]=[a.frames[S.frame],a.frames[S.frame+1]];S.frame++;changed()};
+$("frameDur").onchange=e=>{snapshot();frame().duration=Math.max(1,+e.target.value||1);changed()};
+$("fps").onchange=e=>{snapshot();anim().fps=Math.max(1,Math.min(60,+e.target.value||8));changed();restartPlay()};
+$("loop").onchange=e=>{snapshot();anim().loop=e.target.checked;changed()};
+$("animSel").onchange=e=>{S.anim=+e.target.value;S.frame=0;renderAll();restartPlay()};
+$("addAnim").onclick=()=>{const s=cur();const name=prompt("Animation name","walk");if(!name)return;snapshot();s.animations.push({name,fps:8,loop:true,frames:[blankFrame(s)]});S.anim=s.animations.length-1;S.frame=0;changed()};
+$("renameAnim").onclick=()=>{const a=anim();const name=prompt("Animation name",a.name);if(!name)return;snapshot();a.name=name;changed()};
+$("delAnim").onclick=()=>{const s=cur();if(s.animations.length<=1){toast("A sprite needs at least one animation");return}if(!confirm(`Delete animation "${anim().name}"?`))return;snapshot();s.animations.splice(S.anim,1);S.anim=0;S.frame=0;changed()};
+$("copyHb").onclick=()=>{const a=anim();if(S.frame===0)return;snapshot();frame().hitboxes=JSON.parse(JSON.stringify(a.frames[S.frame-1].hitboxes||[]));changed()};
+
+/* ---------- Playback ---------- */
+let playT=0,playIdx=0,playTick=0;
+const pc=$("previewCanvas"),pctx=pc.getContext("2d");
+function drawPreview(){const s=cur();if(!s)return;const a=anim();const f=a.frames[S.playing?playIdx:Math.min(S.frame,a.frames.length-1)];const z=Math.max(1,Math.floor(96/Math.max(s.width,s.height)));pc.width=s.width*z;pc.height=s.height*z;pctx.imageSmoothingEnabled=false;pctx.setTransform(z,0,0,z,0,0);pctx.clearRect(0,0,s.width,s.height);paintFrame(pctx,f,s);}
+function step(){const a=anim();if(!a)return;playTick++;if(playTick>=(a.frames[playIdx].duration||1)){playTick=0;playIdx++;if(playIdx>=a.frames.length){if(!a.loop){togglePlay();playIdx=a.frames.length-1;return}playIdx=0}}S.frame=playIdx;drawPreview();draw();document.querySelectorAll("#frames .frame").forEach((d,i)=>d.classList.toggle("on",i===playIdx));}
+function togglePlay(){S.playing=!S.playing;$("playBtn").textContent=S.playing?"■ Stop":"▶ Play";if(S.playing){playIdx=S.frame;playTick=0;playT=setInterval(step,1000/anim().fps)}else{clearInterval(playT);renderAll()}}
+function restartPlay(){if(S.playing){clearInterval(playT);playT=setInterval(step,1000/anim().fps)}}
+$("playBtn").onclick=togglePlay;
+setInterval(()=>{if(!S.playing)drawPreview()},250);
+
+/* ---------- Sprites ---------- */
+function slug(n){return (n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"sprite")}
+function uniqueId(base){let id=base,n=2;while(S.sprites.has(id))id=`${base}-${n++}`;return id}
+$("newSprite").onclick=()=>$("newDlg").showModal();
+$("nCancel").onclick=()=>$("newDlg").close();
+$("nOk").onclick=()=>{const name=$("nName").value.trim()||"Fighter",w=Math.max(4,Math.min(128,+$("nW").value||32)),h=Math.max(4,Math.min(128,+$("nH").value||32));const s={format:"sprite-forge/1",id:uniqueId(slug(name)),name,width:w,height:h,palette:["#1b1b24","#f5a623","#ffd27a","#ffffff","#3b2a12","#f0564f","#38c8cc"],animations:[{name:"idle",fps:8,loop:true,frames:[]}],updatedAt:Date.now()};s.animations[0].frames.push(blankFrame(s));S.sprites.set(s.id,s);S.id=s.id;S.anim=0;S.frame=0;S.color=1;$("newDlg").close();changed()};
+$("spriteSel").onchange=e=>{S.id=e.target.value;S.anim=0;S.frame=0;if(S.playing)togglePlay();renderAll()};
+$("renameSprite").onclick=()=>{const s=cur();const n=prompt("Sprite name",s.name);if(!n)return;snapshot();s.name=n;changed()};
+$("deleteSprite").onclick=async()=>{const s=cur();if(!confirm(`Delete sprite "${s.name}"? This removes it for everyone.`))return;S.sprites.delete(s.id);dirty.delete(s.id);if(db){try{await db.doc("sprites/"+s.id).delete()}catch(e){toast("Could not delete: "+e.code)}}S.id=S.sprites.keys().next().value||null;S.anim=0;S.frame=0;renderAll()};
+function loadSprite(s){s=normalize(s);s.id=s.id||uniqueId(slug(s.name||"sprite"));S.sprites.set(s.id,s);S.id=s.id;S.anim=0;S.frame=0;S.color=Math.min(1,s.palette.length-1);changed()}
+function normalize(s){if(s.format!=="sprite-forge/1"&&!s.animations)throw new Error("Not a Sprite Forge JSON");s.palette=(s.palette||[]).slice(0,ALPHA.length);s.width=+s.width;s.height=+s.height;for(const a of s.animations){a.fps=a.fps||8;a.loop=a.loop!==false;for(const f of a.frames){f.rows=Array.from({length:s.height},(_,y)=>((f.rows||[])[y]||"").padEnd(s.width,T).slice(0,s.width));f.duration=f.duration||1;f.hitboxes=f.hitboxes||[]}}return s}
+
+/* ---------- JSON dialog ---------- */
+$("jsonBtn").onclick=()=>{const s=cur();$("jsonText").value=s?JSON.stringify(s,null,1):"";$("jsonDlg").showModal()};
+$("jClose").onclick=()=>$("jsonDlg").close();
+$("jCopy").onclick=async()=>{try{await navigator.clipboard.writeText($("jsonText").value);toast("Copied")}catch{toast("Select the text and copy manually")}};
+$("jSave").onclick=()=>saveFile((cur()?.id||"sprite")+".sprite.json",$("jsonText").value);
+$("jLoad").onclick=()=>{try{loadSprite(JSON.parse($("jsonText").value));$("jsonDlg").close();toast("Loaded")}catch(e){toast("Invalid JSON: "+e.message)}};
+
+/* ---------- Import PNG ---------- */
+$("importBtn").onclick=()=>{$("fileIn").value="";$("fileIn").click()};
+let pendingImg=null;
+$("fileIn").onchange=async e=>{const file=e.target.files[0];if(!file)return;
+  if(file.name.endsWith(".json")){try{loadSprite(JSON.parse(await file.text()));toast("Loaded")}catch(err){toast("Invalid JSON: "+err.message)}return}
+  const bmp=await createImageBitmap(file);pendingImg=bmp;const s=cur();$("iW").value=s?s.width:bmp.width;$("iH").value=s?s.height:bmp.height;$("importDlg").showModal()};
+$("iCancel").onclick=()=>$("importDlg").close();
+$("iOk").onclick=()=>{const bmp=pendingImg;if(!bmp)return;const fw=+$("iW").value||bmp.width,fh=+$("iH").value||bmp.height;let s=cur();
+  if(!s||s.width!==fw||s.height!==fh){s={format:"sprite-forge/1",id:uniqueId("imported"),name:"Imported",width:fw,height:fh,palette:[],animations:[],updatedAt:Date.now()};S.sprites.set(s.id,s);S.id=s.id}
+  else snapshot();
+  const oc=document.createElement("canvas");oc.width=bmp.width;oc.height=bmp.height;const c=oc.getContext("2d");c.drawImage(bmp,0,0);
+  const an={name:$("iAnim").value.trim()||"import",fps:8,loop:true,frames:[]};
+  const cols=Math.max(1,Math.floor(bmp.width/fw)),rowsN=Math.max(1,Math.floor(bmp.height/fh));let dropped=0;
+  for(let ry=0;ry<rowsN;ry++)for(let cx=0;cx<cols;cx++){const d=c.getImageData(cx*fw,ry*fh,fw,fh).data;const rows=[];let empty=true;
+    for(let y=0;y<fh;y++){let r="";for(let x=0;x<fw;x++){const o=(y*fw+x)*4;if(d[o+3]<128){r+=T;continue}empty=false;const hex="#"+[d[o],d[o+1],d[o+2]].map(v=>v.toString(16).padStart(2,"0")).join("");let i=s.palette.indexOf(hex);if(i<0){if(s.palette.length>=ALPHA.length){i=nearest(s.palette,hex);dropped++}else{s.palette.push(hex);i=s.palette.length-1}}r+=iChr(i)}rows.push(r)}
+    if(!empty||cols*rowsN===1)an.frames.push({rows,duration:1,hitboxes:[]})}
+  if(!an.frames.length)an.frames.push(blankFrame(s));
+  s.animations.push(an);S.anim=s.animations.length-1;S.frame=0;S.color=0;$("importDlg").close();changed();
+  toast(`Imported ${an.frames.length} frame(s)`+(dropped?` · palette full, ${dropped} px snapped to nearest color`:""))};
+function hex2(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+function nearest(pal,hex){const [r,g,b]=hex2(hex);let bi=0,bd=1e9;pal.forEach((p,i)=>{const [pr,pg,pb]=hex2(p);const d=(r-pr)**2+(g-pg)**2+(b-pb)**2;if(d<bd){bd=d;bi=i}});return bi}
+
+/* ---------- Export ---------- */
+function buildSheet(s){const maxF=Math.max(...s.animations.map(a=>a.frames.length));const oc=document.createElement("canvas");oc.width=maxF*s.width;oc.height=s.animations.length*s.height;const c=oc.getContext("2d");const meta={frames:{},meta:{app:"Sprite Forge",format:"sprite-forge/1",image:s.id+".png",size:{w:oc.width,h:oc.height},frameSize:{w:s.width,h:s.height},frameTags:[],palette:s.palette}};
+  s.animations.forEach((a,ai)=>{a.frames.forEach((f,fi)=>{c.setTransform(1,0,0,1,fi*s.width,ai*s.height);paintFrame(c,f,s);meta.frames[`${a.name}_${fi}`]={frame:{x:fi*s.width,y:ai*s.height,w:s.width,h:s.height},duration:Math.round(1000/a.fps*(f.duration||1)),hitboxes:f.hitboxes||[]}});meta.meta.frameTags.push({name:a.name,from:0,to:a.frames.length-1,fps:a.fps,loop:a.loop,row:ai,direction:"forward"})});
+  return {canvas:oc,meta}}
+async function saveFile(name,data){if(downloads){try{await downloads.save({filename:name,data});toast("Saved "+name)}catch(e){if(e.code!=="declined")toast("Save failed: "+e.code)}}else{const dlg=$("jsonDlg");if(typeof data==="string"){$("jsonText").value=data;dlg.showModal();toast("Downloads unavailable here — copy the text instead")}else toast("Downloads are unavailable in this view")}}
+$("exportBtn").onclick=async()=>{const s=cur();if(!s)return;const {canvas,meta}=buildSheet(s);const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));await saveFile(s.id+".png",blob);await saveFile(s.id+".json",JSON.stringify(meta,null,1))};
+
+/* ---------- Ask Claude (sample) ---------- */
+let aiCtl=null;
+function aiPromptFor(mode){const s=cur(),f=frame(),a=anim();const pal=s.palette.map((c,i)=>`${iChr(i)}=${c}`).join(" ");
+  const base=`You are a pixel artist producing a ${s.width}x${s.height} sprite frame for a 2D fighting game.
+Output ONLY a JSON object: {"palette":["#rrggbb",...],"rows":["...",...]}.
+"rows" must have exactly ${s.height} strings, each exactly ${s.width} characters. Character "." is transparent; any other character is an index into YOUR "palette" array using this alphabet in order: "${ALPHA}" (so "0" is palette[0], "1" is palette[1], "a" is palette[10]). Use at most 12 colors. Use a dark outline color, solid readable shapes, and leave transparent margin. Character faces right unless told otherwise.`;
+  if(mode==="new")return `${base}\nExisting palette you may reuse (char=hex): ${pal||"(none)"}\n\nSubject: ${$("aiPrompt").value.trim()||"a small fighter in an idle stance, side view"}`;
+  return `${base}\nExisting palette (char=hex): ${pal}\nHere is the current frame of animation "${a.name}" (frame ${S.frame+1} of ${a.frames.length}), drawn with that palette:\n${f.rows.join("\n")}\n\nDraw the NEXT frame of this animation, keeping the same character, proportions, colors and position. Change only what the motion needs. ${$("aiPrompt").value.trim()?"Motion note: "+$("aiPrompt").value.trim():""}`}
+async function askAI(mode){if(!sample)return;const s=cur();if(!s)return;const out=$("aiOut");aiCtl=new AbortController();$("aiStop").hidden=false;$("aiNew").disabled=$("aiNext").disabled=true;out.textContent="Thinking… (5–60 s)";
+  try{const res=await sample.json(aiPromptFor(mode),{signal:aiCtl.signal,cache:false,onText:({text})=>{out.textContent="Drawing… "+text.length+" chars"}});
+    if(!res||!Array.isArray(res.rows)||!Array.isArray(res.palette))throw {code:"invalid_json",message:"missing rows/palette"};
+    snapshot();const map=new Map();res.palette.forEach((hex,i)=>{hex=String(hex).toLowerCase();if(!/^#[0-9a-f]{6}$/.test(hex))hex="#000000";let j=s.palette.indexOf(hex);if(j<0){if(s.palette.length<ALPHA.length){s.palette.push(hex);j=s.palette.length-1}else j=nearest(s.palette,hex)}map.set(iChr(i),iChr(j))});
+    const rows=Array.from({length:s.height},(_,y)=>String(res.rows[y]||"").padEnd(s.width,T).slice(0,s.width).split("").map(ch=>ch===T?T:(map.get(ch)??T)).join(""));
+    const a=anim();const nf={rows,duration:1,hitboxes:mode==="next"?JSON.parse(JSON.stringify(frame().hitboxes||[])):[]};
+    if(mode==="new"&&a.frames.length===1&&a.frames[0].rows.every(r=>!r.replace(/\./g,"")))a.frames[0]=nf;else{a.frames.splice(S.frame+1,0,nf);S.frame++}
+    out.textContent="Added a frame. Undo if you don't like it.";changed();
+  }catch(e){const m={not_granted:"Claude access wasn't allowed for this page.",sampling_disabled:"Claude isn't available on this account.",rate_limited:"Too many requests — try again in a bit.",invalid_json:"Claude's reply wasn't valid sprite JSON — try again or simplify.",refused:"Claude declined this request.",cancelled:"Stopped."};out.textContent=m[e.code]||("Failed: "+(e.code||e.message));if(e.code==="not_granted"||e.code==="sampling_disabled")document.querySelector(".ai").hidden=true}
+  finally{$("aiStop").hidden=true;$("aiNew").disabled=$("aiNext").disabled=false;aiCtl=null}}
+$("aiNew").onclick=()=>askAI("new");$("aiNext").onclick=()=>askAI("next");$("aiStop").onclick=()=>aiCtl?.abort();
+
+/* ---------- Sync (db) ---------- */
+let saveT=0;
+function scheduleSave(){if(!db)return;clearTimeout(saveT);saveT=setTimeout(flush,600)}
+async function flush(){if(!db)return;for(const id of [...dirty]){if(pendingWrite.get(id))continue;const s=S.sprites.get(id);if(!s){dirty.delete(id);continue}dirty.delete(id);s.rev=`${clientId}-${++revN}`;seenRev.set(id,s.rev);const body=JSON.parse(JSON.stringify(s));if(JSON.stringify(body).length>250000){toast("Sprite is too large to sync (256 KB limit) — split animations across sprites");continue}setStatus("saving","Saving…");pendingWrite.set(id,true);try{await db.doc("sprites/"+id).set(body);setStatus("online","Synced")}catch(e){setStatus("error","Sync failed: "+e.code);dirty.add(id)}finally{pendingWrite.delete(id)}}if(dirty.size)scheduleSave()}
+function setStatus(cls,text){$("status").className="status "+cls;$("statusText").textContent=text}
+function applyRemote(snap){let changedCur=false;for(const ch of snap.docChanges()){const id=ch.doc.id;if(ch.type==="removed"){if(dirty.has(id))continue;S.sprites.delete(id);if(S.id===id){S.id=S.sprites.keys().next().value||null;changedCur=true}continue}
+    const d=ch.doc.data();if(!d||d.rev===seenRev.get(id))continue;if(dirty.has(id)||pendingWrite.get(id))continue;try{const s=normalize(JSON.parse(JSON.stringify(d)));s.id=id;S.sprites.set(id,s);seenRev.set(id,d.rev);if(id===S.id){changedCur=true}}catch{}}
+  if(!S.id&&S.sprites.size){S.id=S.sprites.keys().next().value;changedCur=true}
+  clampSel();renderAll();if(changedCur&&snap.metadata&&!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites)toast("Updated from another editor");}
+async function boot(){const seed=starterSprite();
+  const [d,dl,sm]=await Promise.all([claude.use("db"),claude.use("downloads"),claude.use("sample")]).catch(()=>[null,null,null]);
+  db=d;downloads=dl;sample=sm;if(!sample)document.querySelector(".ai").hidden=true;
+  if(!db){S.sprites.set(seed.id,seed);S.id=seed.id;setStatus("","Local only — export to keep your work");renderAll();return}
+  setStatus("saving","Connecting…");
+  try{const first=await db.collection("sprites").get();
+    if(first.empty){S.sprites.set(seed.id,seed);S.id=seed.id;dirty.add(seed.id);await flush()}
+    unsub=db.collection("sprites").onSnapshot(applyRemote,e=>{setStatus("error","Sync lost: "+e.code)});
+    setStatus("online","Synced");
+  }catch(e){S.sprites.set(seed.id,seed);S.id=seed.id;setStatus("error","Sync unavailable: "+e.code);renderAll()}
+}
+let toastT=0;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2600)}
+window.addEventListener("beforeunload",()=>{if(dirty.size)flush()});
+if(window.claude&&typeof window.claude.use==="function")boot();else{const seed=starterSprite();S.sprites.set(seed.id,seed);S.id=seed.id;document.querySelector(".ai").hidden=true;setStatus("","Local only");renderAll()}
+</script>

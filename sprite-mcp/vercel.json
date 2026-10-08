@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/mcp/:key", "destination": "/api/mcp?key=:key" },
+    { "source": "/", "destination": "/api/mcp" }
+  ],
+  "functions": { "api/mcp.js": { "maxDuration": 60 } }
+}

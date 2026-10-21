@@ -4,8 +4,9 @@ import { z } from "zod";
 import fs from "node:fs/promises";
 import path from "node:path";
 import * as F from "./format.js";
+import { pixellabClient, syncCharacter } from "./pixellab.js";
 
-export function buildServer(store) {
+export function buildServer(store, opts = {}) {
   const server = new McpServer({ name: "sprite-mcp", version: "1.1.0" });
   async function load(id) {
     if (!/^[a-z0-9][a-z0-9-_]*$/i.test(id)) throw new Error(`Bad sprite id "${id}" (use letters, digits, - and _)`);
@@ -254,6 +255,101 @@ export function buildServer(store) {
     return text({ imported: frames.length, ...summary(s) });
   }));
   
+
+  // ---------- PixelLab (AI generation) ----------
+  const pl = opts.pixellab || pixellabClient();
+  const Wait = z.number().int().min(0).max(290).default(45).describe("Seconds to wait for PixelLab before returning. Jobs usually take 1-5 min; if it isn't done, call pixellab_sync later. Keep under 50 on the cloud server.");
+  async function finish(s, budget, startedNote) {
+    const meta = s.pixellab;
+    let w = { done: true, failed: [], pending: [] };
+    if (meta.jobs?.length) w = await pl.waitJobs(meta.jobs, budget * 1000);
+    if (w.failed.length) meta.jobs = meta.jobs.filter((j) => !w.failed.some((f) => f.id === j));
+    if (w.pending.length) {
+      meta.jobs = w.pending;
+      await save(s);
+      return text({ status: "processing", note: `${startedNote} Still generating on PixelLab — call pixellab_sync with id "${s.id}" in a minute or two.`, pending_jobs: w.pending.length, failed: w.failed });
+    }
+    meta.jobs = [];
+    const r = await syncCharacter(pl, s);
+    await save(s);
+    const newest = r.added.length ? s.animations[s.animations.length - 1] : s.animations[0];
+    const shot = F.renderFramePNG(s, newest.frames[0], Math.max(1, Math.floor(256 / Math.max(s.width, s.height))));
+    return image(shot, JSON.stringify({ status: "done", imported: r.added, failed: w.failed, ...summary(s) }, null, 1));
+  }
+
+  server.registerTool("pixellab_balance", {
+    description: "Show the PixelLab account's remaining credits / generations (needs PIXELLAB_TOKEN on the server).",
+    inputSchema: {},
+  }, wrap(async () => text(await pl.call("GET", "/balance"))));
+
+  server.registerTool("pixellab_create_character", {
+    description: "Generate a pixel-art character with PixelLab (create-character-v3: 4 or 8 directional views) and save it as a new Sprite Forge sprite. The views land in the 'rotations' animation and the facing view becomes 'idle'. Costs PixelLab generations. Follow with pixellab_animate for walk/attack/etc.",
+    inputSchema: {
+      id: z.string().describe("New sprite id, e.g. 'gohantar-rider'"),
+      description: z.string().describe("What the character looks like, e.g. 'delivery rider on a red kapchai motorbike, orange helmet, teal jacket'"),
+      size: z.number().int().min(32).max(128).default(64).describe("Character size in px (square)"),
+      directions: z.union([z.literal(4), z.literal(8)]).default(8),
+      view: z.enum(["side", "low top-down", "high top-down"]).default("side"),
+      facing: z.enum(["east", "west", "south", "north"]).default("east").describe("Which view becomes the idle frame"),
+      outline: z.string().optional().describe("e.g. 'single color black outline', 'selective outline', 'lineless'"),
+      detail: z.string().optional().describe("e.g. 'low detail', 'medium detail', 'highly detailed'"),
+      seed: z.number().int().optional(),
+      wait_seconds: Wait,
+    },
+  }, wrap(async ({ id, description, size, directions, view, facing, outline, detail, seed, wait_seconds }) => {
+    if (!/^[a-z0-9][a-z0-9-_]*$/i.test(id)) throw new Error(`Bad sprite id "${id}" (use letters, digits, - and _)`);
+    if (await store.read(id)) throw new Error(`Sprite "${id}" already exists — pick a new id`);
+    const body = { description, n_directions: directions, view, image_size: { width: size, height: size }, name: id };
+    if (outline) body.outline = outline;
+    if (detail) body.detail = detail;
+    if (seed !== undefined) body.seed = seed;
+    const r = await pl.call("POST", "/create-character-v3", body);
+    const s = F.newSprite({ id, name: id, width: size, height: size, palette: [] });
+    s.palette = [];
+    s.pixellab = { character_id: r.character_id, jobs: [r.background_job_id], facing, sized: false, prompt: description, imported: [], names: {} };
+    await save(s);
+    return finish(s, wait_seconds, `Started PixelLab character ${r.character_id}.`);
+  }));
+
+  server.registerTool("pixellab_animate", {
+    description: "Add an AI animation to a sprite made with pixellab_create_character. mode 'v3' (default) animates from a text action, e.g. 'walking cycle', 'riding motorbike, wheels spinning', 'jab punch'. mode 'template' uses a PixelLab template id (e.g. 'breathing-idle', 'cross-punch', 'backflip'). Frames land in an animation named after `name` (plus '-<direction>' when several directions). Costs PixelLab generations per direction.",
+    inputSchema: {
+      id: z.string(),
+      action: z.string().optional().describe("v3/pixminimax: what happens, e.g. 'walking cycle'"),
+      name: z.string().optional().describe("Animation name in Sprite Forge (default: from the action)"),
+      mode: z.enum(["v3", "template", "pixminimax"]).default("v3"),
+      template: z.string().optional().describe("template mode: PixelLab template_animation_id"),
+      frame_count: z.number().int().min(4).max(40).default(8).describe("v3: 4-16 even; pixminimax: multiple of 4 up to 40"),
+      directions: z.array(z.string()).optional().describe("e.g. ['east'] (default: the sprite's facing). Each direction costs extra."),
+      wait_seconds: Wait,
+    },
+  }, wrap(async ({ id, action, name, mode, template, frame_count, directions, wait_seconds }) => {
+    const s = await load(id);
+    if (!s.pixellab?.character_id) throw new Error(`Sprite "${id}" isn't a PixelLab character — create it with pixellab_create_character.`);
+    if (s.pixellab.jobs?.length) throw new Error(`"${id}" still has PixelLab jobs running — call pixellab_sync first.`);
+    if (mode === "template" && !template) throw new Error("template mode needs `template`");
+    if (mode !== "template" && !action) throw new Error("Give `action`, e.g. 'walking cycle'");
+    const body = { character_id: s.pixellab.character_id, mode, directions: directions?.length ? directions : [s.pixellab.facing || "east"] };
+    if (mode === "template") body.template_animation_id = template;
+    else { body.action_description = action; body.frame_count = frame_count; }
+    body.animation_name = name || action || template;
+    const r = await pl.call("POST", "/characters/animations", body);
+    const jobs = r.background_job_ids || (r.background_job_id ? [r.background_job_id] : []);
+    s.pixellab.jobs = jobs;
+    if (r.animation_group_id) s.pixellab.names[r.animation_group_id] = name || action || template;
+    await save(s);
+    return finish(s, wait_seconds, `Started ${jobs.length} PixelLab animation job(s).`);
+  }));
+
+  server.registerTool("pixellab_sync", {
+    description: "Finish a PixelLab generation: wait for any running jobs on the sprite, then import new rotations/animations from its PixelLab character. Safe to call repeatedly.",
+    inputSchema: { id: z.string(), wait_seconds: Wait },
+  }, wrap(async ({ id, wait_seconds }) => {
+    const s = await load(id);
+    if (!s.pixellab?.character_id) throw new Error(`Sprite "${id}" isn't linked to a PixelLab character.`);
+    return finish(s, wait_seconds, "");
+  }));
+
   server.registerTool("delete_sprite", {
     description: "Delete a sprite file permanently.",
     inputSchema: { id: z.string() },
